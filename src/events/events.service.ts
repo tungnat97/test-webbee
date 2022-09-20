@@ -1,4 +1,4 @@
-import { Repository } from 'typeorm';
+import { In, MoreThan, Repository } from 'typeorm';
 import { Get, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Event } from './entities/event.entity';
@@ -96,7 +96,6 @@ export class EventsService {
   @Get('events')
   async getEventsWithWorkshops() {
     // throw new Error('TODO task 1');
-    // Sorry I have zero experience with TypeORM :<
     const workshopMap = await this.workshopRepository.find().then(res => res.reduce((map: {[field: number]: Workshop[]} , ws) => {
       map[ws.eventId] = map[ws.eventId] || [];
       map[ws.eventId].push(ws);
@@ -175,6 +174,23 @@ export class EventsService {
      */
   @Get('futureevents')
   async getFutureEventWithWorkshops() {
-    throw new Error('TODO task 2');
+    // throw new Error('TODO task 2');
+    const today = new Date();
+    const eventId = await this.workshopRepository.find({where: {
+      start: MoreThan(today.toISOString()),
+    }}).then(res => res.map(x => x.eventId));
+    const workshopMap = await this.workshopRepository.find().then(res => res.reduce((map: {[field: number]: Workshop[]} , ws) => {
+      map[ws.eventId] = map[ws.eventId] || [];
+      map[ws.eventId].push(ws);
+      return map;
+    }, {}));
+    return this.eventRepository.find({
+      where: {
+        id: In(eventId),
+      },
+    }).then(res => res.map(x => {
+      Object.assign(x, {workshops: workshopMap[x.id]});
+      return x;
+    }))
   }
 }
